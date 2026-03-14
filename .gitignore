@@ -1,0 +1,8 @@
+# Ignorar bases de dados geradas
+venv/
+*.csv
+*.xlsx
+.env
+__pycache__/
+LEADS/
+*.yml

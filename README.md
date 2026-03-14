@@ -1,40 +1,33 @@
-# Port80
-A Python script designed to extract business data from online directories and automatically audit the technical health of their websites.
+# Port80: Automated ETL & Web Health Audit Pipeline
 
-What it does:
+An end-to-end Python ETL (Extract, Transform, Load) pipeline designed to extract business data from online directories, autonomously audit the technical health of their websites, and securely load the processed data into a relational database.
 
-    Navigates through regional pages of online business directories.
+## 🚀 What it does (The ETL Process)
 
-    Extracts Business Name, Phone Number, and Email (via hidden mailto: tags).
+* **Extract:** Navigates through regional pages of online business directories, scraping Business Names, Phone Numbers, and Emails (dynamically extracted via hidden `mailto:` tags).
+* **Transform:** Visits each extracted website URL and performs a rigorous technical health check. It filters out blacklisted domains and applies custom logic to categorize social media pages.
+* **Load:** Securely injects the audited data into a **PostgreSQL** database. It utilizes `UPSERT` (`ON CONFLICT`) logic to ensure data integrity, update existing records with the latest latency/status, and prevent duplicates during recurring runs.
 
-    Visits the extracted website URL and performs a connection health check.
+## ⚡ Connection & Health Tests
 
-    Exports the categorized results to CSV files.
+* **HTTP Status Codes:** Detection of active pages, redirects, or client/server errors (e.g., 200, 404, 403).
+* **Server Diagnostics:** Expired domains or server-down detection (`CONNECTION_REFUSED`).
+* **Performance:** Real-time response latency monitoring and timeout handling (> 5 seconds).
+* **Security:** SSL Certificate verification (HTTP vs HTTPS detection).
 
-Connection & Health Tests:
+## 🏗️ Architecture & Storage
 
-    HTTP Status Codes detection (e.g., 200, 404, 403).
+Transitioning from static CSV exports, this project now leverages a modern data architecture:
+* **PostgreSQL Database:** Data is stored in a structured, queryable `business` table.
+* **Dockerized Environment:** The database runs in an isolated Docker container, ensuring a scalable and consistent environment between development and production.
+* **Secure Credentials:** Infrastructure connections are strictly managed via `.env` files, keeping sensitive credentials out of the source code.
 
-    Expired domains / Server down detection (CONNECTION_REFUSED).
+## 🛠️ Technologies Stack
 
-    Response time monitoring / Timeouts (> 5 seconds).
-
-    SSL Certificate verification (HTTP vs HTTPS).
-
-Output
-
-The script automatically generates two files in the root directory:
-
-    Stores_Websites.csv: Businesses with their own domains (includes the technical diagnostic).
-
-    Stores_Social.csv: Businesses operating exclusively via social media platforms (Facebook/Instagram).
-
-Technologies
-
-    Python 3
-
-    requests (HTTP calls and network exception handling)
-
-    beautifulsoup4 / lxml (HTML Parsing)
-
-    urllib & csv
+* **Core:** Python 3
+* **Infrastructure:** PostgreSQL, Docker
+* **Data Engineering / Libraries:**
+    * `psycopg2` (PostgreSQL adapter for Python)
+    * `python-dotenv` (Environment variable management)
+    * `requests` (HTTP calls and robust network exception handling)
+    * `beautifulsoup4` / `lxml` (HTML Parsing & DOM navigation)

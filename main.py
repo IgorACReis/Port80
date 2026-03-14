@@ -1,14 +1,17 @@
+import psycopg2
 import requests
 import csv
 from bs4 import BeautifulSoup
 import time
 from urllib.parse import quote, urljoin
 import urllib3
+import os
+from dotenv import load_dotenv
 
 URL_BASE = "https://www.diretorio-exemplo.com/searches"
 URL_CRAWL = "https://www.diretorio-exemplo.com/"
 URL_MODE = "restaurantes/"
-REGIOES = ["Alenquer","Amadora","Arruda dos Vinhos","Azambuja","Cadaval","Cascais","Lisboa","Loures","Lourinha","Mafra","Odivelas","Oeiras","Sintra","Sobral de Monte Agraco","Torres Vedras","Vila Franca de Xira"]
+REGIOES = ["Alenquer"]
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.3','Accept-Language':'en-US'}
 
 def urlcrawer_engine():
@@ -68,14 +71,15 @@ def urlcrawer_engine():
                     time.sleep(5)
                     try:
                         r = requests.get(url,headers=headers)
-                    except:
+                    except: 
                         break
 
                 page_count += 1
             except Exception as e:
                 print(f"CRITICAL ERROR: {e}")
                 break
-    save_to_excel(dic)
+    #save_to_excel(dic)
+    save_to_db(dic)
 
 def gethref(soup):
     dic = []
@@ -83,6 +87,7 @@ def gethref(soup):
     if store:
             for i in store:
                 a = i["href"]
+                # Add delay between store detail requests
                 time.sleep(2)
                 url = store_url(a)  
                 if url != None:         
@@ -162,12 +167,12 @@ def getstatus(url:str, phone, name, email):
     try:
         r = requests.get(url, headers=headers, timeout=5, verify=False)
         dic = {
-            "name":name,
-            "email":email,
-            "url":r.url,
-            "phone":phone,
-            "status":r.status_code,
-            "latency":round(r.elapsed.total_seconds(), 2)
+            "Name":name,
+            "Email":email,
+            "Url":r.url,
+            "Phone":phone,
+            "Status":r.status_code,
+            "Latency":round(r.elapsed.total_seconds(), 2)
         }
         return test_request(dic, url, phone, name,email)
     except requests.exceptions.Timeout:
@@ -192,13 +197,13 @@ def test_request(request:dict, url:str, phone, name,email):
     if not request:
         print("request is empty")
         return
-    status_code = request["status"]
-    if request["url"].startswith("https"):
+    status_code = request["Status"]
+    if request["Url"].startswith("https"):
         sec = True
-    if request["status"] == 200:
+    if request["Status"] == 200:
         con = True
         
-    speed = request["latency"]
+    speed = request["Latency"]
         
     if (sec == True and con == True and speed < 3) and not ("facebook" in url or "instagram" in url):
         return None
@@ -231,7 +236,41 @@ def save_to_excel(dic):
         
     print(f"Saved {len(audit_list)} Website Leads.")
     print(f"Saved {len(social_list)} Social Media Leads.")
+
+def save_to_db(dic):
+    load_dotenv()
+    host = os.getenv("DB_HOST")
+    port = os.getenv("DB_PORT")
+    user = os.getenv("DB_USER")
+    password = os.getenv("DB_PASSWORD")
+    db_name = os.getenv("DB_NAME")
+
+    blacklist = ['tripadvisor', 'thefork', 'zomato', 'yelp', 'pai.pt', 'eatbu', 'wix', 'google']
+
+
+    try:
+        with psycopg2.connect(host=host,port=port,user=user,password=password,database=db_name) as conn:
+            print(f"Connected to db with host name: {host}")
+            for row in dic:
+                url = row['Url'].lower()
+                if any(bad_word in url for bad_word in blacklist):
+                    continue
+                with conn.cursor() as cursor:
+                    data_insert = '''INSERT INTO business	(name,email,url,phone,security,status,latency)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s)
+                        ON CONFLICT(name)
+                        DO UPDATE SET
+                            status = EXCLUDED.status,
+                            latency = EXCLUDED.latency;
+                    '''
+                    info = (row['Name'], row['Email'], row['Url'], row['Phone'], row['Security'], row['Status'], row['Latency'])
+                    cursor.execute(data_insert, info)			
+            conn.commit()
+    except Exception as e:
+        print(f"Error connecting to the db or inserting data: {e}")
+
 def main():
+    
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     urlcrawer_engine()
 
