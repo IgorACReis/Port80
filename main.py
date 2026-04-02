@@ -8,11 +8,18 @@ import urllib3
 import os
 from dotenv import load_dotenv
 
-URL_BASE = "https://www.diretorio-exemplo.com/searches"
-URL_CRAWL = "https://www.diretorio-exemplo.com/"
+URL_BASE = "https://www.pai.pt/searches"
+URL_CRAWL = "https://www.pai.pt/"   
 URL_MODE = "restaurantes/"
-REGIOES = ["Alenquer"]
+REGIOES = ["Viana do Castelo"]
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.3','Accept-Language':'en-US'}
+
+load_dotenv()
+host = os.getenv("DB_HOST")
+port = os.getenv("DB_PORT")
+user = os.getenv("DB_USER")
+password = os.getenv("DB_PASSWORD")
+db_name = os.getenv("DB_NAME")
 
 def urlcrawer_engine():
     dic = []
@@ -238,12 +245,6 @@ def save_to_excel(dic):
     print(f"Saved {len(social_list)} Social Media Leads.")
 
 def save_to_db(dic):
-    load_dotenv()
-    host = os.getenv("DB_HOST")
-    port = os.getenv("DB_PORT")
-    user = os.getenv("DB_USER")
-    password = os.getenv("DB_PASSWORD")
-    db_name = os.getenv("DB_NAME")
 
     blacklist = ['tripadvisor', 'thefork', 'zomato', 'yelp', 'pai.pt', 'eatbu', 'wix', 'google']
 
@@ -251,14 +252,15 @@ def save_to_db(dic):
     try:
         with psycopg2.connect(host=host,port=port,user=user,password=password,database=db_name) as conn:
             print(f"Connected to db with host name: {host}")
-            for row in dic:
-                url = row['Url'].lower()
-                if any(bad_word in url for bad_word in blacklist):
-                    continue
-                with conn.cursor() as cursor:
+            with conn.cursor() as cursor:
+                for row in dic:
+                    url = row['Url'].lower()
+                    if any(bad_word in url for bad_word in blacklist):
+                        continue
+
                     data_insert = '''INSERT INTO business	(name,email,url,phone,security,status,latency)
                         VALUES (%s,%s,%s,%s,%s,%s,%s)
-                        ON CONFLICT(name)
+                        ON CONFLICT(name, email)
                         DO UPDATE SET
                             status = EXCLUDED.status,
                             latency = EXCLUDED.latency;
@@ -270,7 +272,7 @@ def save_to_db(dic):
         print(f"Error connecting to the db or inserting data: {e}")
 
 def main():
-    
+   
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     urlcrawer_engine()
 
