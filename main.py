@@ -7,11 +7,12 @@ from urllib.parse import quote, urljoin
 import urllib3
 import os
 from dotenv import load_dotenv
+import unicodedata
 
 URL_BASE = "https://www.pai.pt/searches"
 URL_CRAWL = "https://www.pai.pt/"   
 URL_MODE = "restaurantes/"
-REGIOES = ["Viana do Castelo"]
+REG_FILE = "regions.txt"
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.3','Accept-Language':'en-US'}
 
 load_dotenv()
@@ -21,11 +22,23 @@ user = os.getenv("DB_USER")
 password = os.getenv("DB_PASSWORD")
 db_name = os.getenv("DB_NAME")
 
-def urlcrawer_engine():
+def load_regions():
+    region_list = []
+    try:
+        with open(REG_FILE,"r") as file:
+            for l in file:
+                if l:
+                    txt = unicodedata.normalize('NFKD', l).encode('ASCII', 'ignore').decode('utf-8')
+                    region_list.append(txt.lower().replace(" ", "-").strip())
+        return region_list
+    except Exception as e:
+        print(f"Error with region file: {e}")
+
+def urlcrawer_engine(REGIONS):
     dic = []
     seen_urls = set()
     url_round = []
-    for region in REGIOES:
+    for region in REGIONS:
         print("Starting crawl for region " + region)
 
         payload = {
@@ -80,13 +93,14 @@ def urlcrawer_engine():
                         r = requests.get(url,headers=headers)
                     except: 
                         break
-
                 page_count += 1
             except Exception as e:
                 print(f"CRITICAL ERROR: {e}")
                 break
+        save_to_db(dic)
+        dic=[]
     #save_to_excel(dic)
-    save_to_db(dic)
+    
 
 def gethref(soup):
     dic = []
@@ -272,9 +286,9 @@ def save_to_db(dic):
         print(f"Error connecting to the db or inserting data: {e}")
 
 def main():
-   
+    reg_list = load_regions()
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-    urlcrawer_engine()
+    urlcrawer_engine(reg_list)
 
 if __name__ == "__main__":
         main()
