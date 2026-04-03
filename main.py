@@ -10,8 +10,8 @@ from dotenv import load_dotenv
 import unicodedata
 from datetime import timedelta
 
-URL_BASE = "https://www.pai.pt/searches"
-URL_CRAWL = "https://www.pai.pt/"
+URL_BASE = "https://www.diretorio-exemplo.com/searches"
+URL_CRAWL = "https://www.diretorio-exemplo.com/"
 REG_FILE = "regions.txt"
 IND_FILE = "industries.txt"
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.3','Accept-Language':'en-US'}
