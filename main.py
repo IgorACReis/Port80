@@ -49,6 +49,7 @@ def load_industries():
         print(f"Error with industries file: {e}")
 
 def urlcrawer_engine(REGIONS,INDUSTRIES):
+    t = time.localtime()
     dic = []
     seen_urls = set()
     url_round = []
@@ -59,7 +60,7 @@ def urlcrawer_engine(REGIONS,INDUSTRIES):
                 ------------------------------------------------------------
                 REGION:    {region.upper():<25}
                 INDUSTRY:  {industry[0].upper():<25}
-                START TIME: {str(time.strftime("%d/%m/%Y %H:%M:%S",time.localtime()))} UPTIME: {str(timedelta(seconds=int(time.time() - START_TIME))):<25}
+                START TIME: {str(time.strftime("%d/%m/%Y %H:%M:%S",t))} UPTIME: {str(timedelta(seconds=int(time.time() - START_TIME))):<25}
                 ============================================================
                 """)
             u = URL_CRAWL + industry[0] + "/"+ region.lower().replace(" ","-")
