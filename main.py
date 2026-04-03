@@ -8,12 +8,14 @@ import urllib3
 import os
 from dotenv import load_dotenv
 import unicodedata
+from datetime import timedelta
 
-URL_BASE = "https://www.diretorio-exemplo.com/searches"
-URL_CRAWL = "https://www.diretorio-exemplo.com/"  
+URL_BASE = "https://www.pai.pt/searches"
+URL_CRAWL = "https://www.pai.pt/"   
 URL_MODE = "restaurantes/"
 REG_FILE = "regions.txt"
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.3','Accept-Language':'en-US'}
+START_TIME = time.time()
 
 load_dotenv()
 host = os.getenv("DB_HOST")
@@ -39,7 +41,7 @@ def urlcrawer_engine(REGIONS):
     seen_urls = set()
     url_round = []
     for region in REGIONS:
-        print("Starting crawl for region " + region)
+        print("Starting crawl for region " + region + f"\nCurrent time of execution: {timedelta(seconds=int(time.time() - START_TIME))}s")
 
         payload = {
             "search[query]": "restaurantes",  
