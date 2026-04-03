@@ -1,8 +1,14 @@
-# Ignorar bases de dados geradas
+# Ambientes Virtuais e Cache
 venv/
+__pycache__/
+
+# Dados exportados e diretórios brutos
 *.csv
 *.xlsx
-.env
-__pycache__/
 LEADS/
-*.yml
+
+# Credenciais e Variáveis de Ambiente
+.env
+
+# Logs do sistema e do Cron
+*.log

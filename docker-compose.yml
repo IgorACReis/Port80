@@ -1,0 +1,13 @@
+version: "3.8"
+
+services:
+  db:
+    image: "postgres:18.3"
+    environment:
+      POSTGRES_USER: "Igor"
+      POSTGRES_PASSWORD: "123"
+      POSTGRES_DB: "business_data"
+    ports:
+      - "5432:5432"
+    volumes:
+      - "~/Port80/"

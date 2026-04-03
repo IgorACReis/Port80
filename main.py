@@ -9,8 +9,8 @@ import os
 from dotenv import load_dotenv
 import unicodedata
 
-URL_BASE = "https://www.diretorio-exemplo.com/searches"
-URL_CRAWL = "https://www.diretorio-exemplo.com/"  
+URL_BASE = "https://www.pai.pt/searches"
+URL_CRAWL = "https://www.pai.pt/"   
 URL_MODE = "restaurantes/"
 REG_FILE = "regions.txt"
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.3','Accept-Language':'en-US'}
