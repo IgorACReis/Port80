@@ -118,8 +118,8 @@ def urlcrawer_engine(REGIONS,INDUSTRIES):
                 except Exception as e:
                     print(f"CRITICAL ERROR: {e}")
                     break
-            #save_to_db(dic)
-            save_to_excel(dic)
+            save_to_db(dic)
+            #save_to_excel(dic)
             dic=[]
     
 
