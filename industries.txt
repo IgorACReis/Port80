@@ -1,0 +1,174 @@
+restaurantes, restauração e alimentação
+pastelarias e confeitarias, restauração e alimentação
+cafés, restauração e alimentação
+supermercados, restauração e alimentação
+padarias, restauração e alimentação
+talhos, restauração e alimentação
+mercearias, restauração e alimentação
+bares, restauração e alimentação
+casas de chá, restauração e alimentação
+gelatarias, restauração e alimentação
+discotecas, restauração e alimentação
+mercados, restauração e alimentação
+peixarias, restauração e alimentação
+gastronomia e vinhos, restauração e alimentação
+hospitais, saúde
+centros de saúde, saúde
+análises clínicas e exames, saúde
+clínicas e especialidades médicas, saúde
+terapias e medicinas alternativas, saúde
+centros de enfermagem, saúde
+lares de idosos, saúde
+apoio domiciliario, saúde
+emergência médica, saúde
+farmácias e parafarmácias, saúde
+produtos naturais e dietéticos, saúde
+ópticas e oculistas, saúde
+aparelhos auditivos, saúde
+cabeleireiros, beleza e bem-estar
+barbeiros, beleza e bem-estar
+centros de estética, beleza e bem-estar
+spas e massagens, beleza e bem-estar
+tatuagens, beleza e bem-estar
+perfumarias, beleza e bem-estar
+gestão e serviços financeiros, serviços profissionais
+serviços legais, serviços profissionais
+marketing e comunicação, serviços profissionais
+reparações e assistência técnica, serviços profissionais
+canalizadores e picheleiros, serviços profissionais
+limpezas, serviços profissionais
+centros de cópias, serviços profissionais
+it (informática), serviços profissionais
+serviços de segurança, serviços profissionais
+eletricistas, serviços profissionais
+desentupimentos, serviços profissionais
+antenas e satélites, serviços profissionais
+desinfestações e fumigações, serviços profissionais
+mudanças, serviços profissionais
+distribuidores de gás, serviços profissionais
+funerais, serviços profissionais
+costureiras e modistas, serviços profissionais
+alfaiates, serviços profissionais
+restauros, serviços profissionais
+seguros, serviços profissionais
+imobiliárias, serviços profissionais
+avaliadores, serviços profissionais
+certificação, serviços profissionais
+chaveiros, serviços profissionais
+pintores, serviços profissionais
+carpinteiros, serviços profissionais
+jardineiros, serviços profissionais
+administração de condomínios, serviços profissionais
+casas de câmbio, serviços profissionais
+penhores, serviços profissionais
+babysitters, serviços profissionais
+funileiros, serviços profissionais
+estofadores, serviços profissionais
+mecânicos, serviços profissionais
+serviços automóvel, serviços profissionais
+serviços de tradução, serviços profissionais
+modelismo, serviços profissionais
+serviços de consultoria, serviços profissionais
+franchising, serviços profissionais
+acompanhantes, serviços profissionais
+alugueres, serviços profissionais
+mobiliário, casa e jardim
+decoração, casa e jardim
+floristas, casa e jardim
+jardim e espaço exterior, casa e jardim
+aquecimento e climatização, casa e jardim
+pavimentos e revestimentos, casa e jardim
+bricolage, casa e jardim
+piscinas e acessórios, casa e jardim
+casa de banho, casa e jardim
+cozinha, casa e jardim
+eletrodomésticos, casa e jardim
+camas e colchões, casa e jardim
+sofás e cadeirões, casa e jardim
+iluminação, casa e jardim
+têxteis e tapetes, casa e jardim
+telecomunicações e acessórios, tecnologia
+informática e acessórios, tecnologia
+vídeo e fotografia, tecnologia
+tv e som, tecnologia
+lojas de roupa, moda e retalho
+joalharias, moda e retalho
+lingerie e roupa interior, moda e retalho
+sapatarias, moda e retalho
+lojas de acessórios, moda e retalho
+bijuterias, moda e retalho
+relojoarias, moda e retalho
+ourivesarias, moda e retalho
+artigos de viagem, moda e retalho
+sex shops, moda e retalho
+roupa de banho e praia, moda e retalho
+puericultura, moda e retalho
+trajes e fardas, moda e retalho
+construção civil, indústria e construção
+fornecedores de têxteis, indústria e construção
+fornecedores de calçado, indústria e construção
+fornecedores de moda, indústria e construção
+arquitetos, indústria e construção
+biotecnologia, indústria e construção
+fornecedores de lojas e comércio, indústria e construção
+pirotecnia, indústria e construção
+material de construção, indústria e construção
+equipamentos para construção, indústria e construção
+engenharia, indústria e construção
+metalurgia, indústria e construção
+metalomecânica, indústria e construção
+coberturas, indústria e construção
+domótica, indústria e construção
+vidrarias, indústria e construção
+serralharias, indústria e construção
+pedreiras, indústria e construção
+indústria, indústria e construção
+serviços industriais, indústria e construção
+material industrial, indústria e construção
+equipamentos industriais, indústria e construção
+fornecedores saúde, indústria e construção
+análises químicas, indústria e construção
+equipamento hoteleiro, indústria e construção
+fornecedores de limpezas, indústria e construção
+sistemas de aspiração central, indústria e construção
+sistemas de aquecimento, indústria e construção
+segurança e qualidade, indústria e construção
+elevadores, indústria e construção
+plataformas elevatórias, indústria e construção
+tratamento de resíduos, indústria e construção
+energia, indústria e construção
+electricidade, indústria e construção
+gás, indústria e construção
+combustíveis, indústria e construção
+mercadorias e transporte, indústria e construção
+proteção do ambiente, indústria e construção
+pavimentos industriais, indústria e construção
+água e canalização, indústria e construção
+pavimentação de estradas, indústria e construção
+correios, indústria e construção
+agricultura e horticultura, indústria e construção
+pecuária, indústria e construção
+floricultores, indústria e construção
+aviários, indústria e construção
+apicultura, indústria e construção
+embalagens, indústria e construção
+fornecedores de plástico, indústria e construção
+ventilação, indústria e construção
+matéria prima, indústria e construção
+fornecedores de papel, indústria e construção
+máquinas de vending, indústria e construção
+serviços de navios, indústria e construção
+portos e marinas, indústria e construção
+madeiras, indústria e construção
+tornearias, indústria e construção
+fabricantes de automóveis, indústria e construção
+fornecedores de alimentação, indústria e construção
+electrónica, indústria e construção
+fornecedores de brinquedos, indústria e construção
+equipamento gráfico, indústria e construção
+fornecedores de tabaco, indústria e construção
+aeronáutica, indústria e construção
+bandeiras, indústria e construção
+baterias, indústria e construção
+pesca, indústria e construção
+radiadores, indústria e construção

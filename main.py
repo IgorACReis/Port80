@@ -11,9 +11,9 @@ import unicodedata
 from datetime import timedelta
 
 URL_BASE = "https://www.pai.pt/searches"
-URL_CRAWL = "https://www.pai.pt/"   
-URL_MODE = "restaurantes/"
+URL_CRAWL = "https://www.pai.pt/"
 REG_FILE = "regions.txt"
+IND_FILE = "industries.txt"
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.3','Accept-Language':'en-US'}
 START_TIME = time.time()
 
@@ -36,75 +36,94 @@ def load_regions():
     except Exception as e:
         print(f"Error with region file: {e}")
 
-def urlcrawer_engine(REGIONS):
+def load_industries():
+    industries_list = []
+    try:
+        with open(IND_FILE,"r") as file:
+            for l in file:
+                if l:
+                    txt = unicodedata.normalize('NFKD', l).encode('ASCII', 'ignore').decode('utf-8')
+                    industries_list.append(txt.lower().replace(" ", "-").strip().split(","))
+        return industries_list
+    except Exception as e:
+        print(f"Error with industries file: {e}")
+
+def urlcrawer_engine(REGIONS,INDUSTRIES):
     dic = []
     seen_urls = set()
     url_round = []
-    for region in REGIONS:
-        print("Starting crawl for region " + region + f"\nCurrent time of execution: {timedelta(seconds=int(time.time() - START_TIME))}s")
-
-        payload = {
-            "search[query]": "restaurantes",  
-            "search[location]": region,       
-            "search[location_value]": region, 
-            "commit": "Procurar"              
-        }
-        u = URL_CRAWL + URL_MODE + region.lower().replace(" ","-")
-        try:
-            r = requests.get(u, headers=headers)
-            r.raise_for_status()
-        except Exception as e:
-            print(f"Could not load first page in region {region}: {e}")
-            continue
-        
-        page_count = 1
-        while True:
+    for industry in INDUSTRIES:
+        for region in REGIONS:
+            print(f"""
+                {'='*60}
+                ------------------------------------------------------------
+                REGION:    {region.upper():<25}
+                INDUSTRY:  {industry[0].upper():<25}
+                START TIME: {str(time.strftime("%d/%m/%Y %H:%M:%S",time.localtime()))} UPTIME: {str(timedelta(seconds=int(time.time() - START_TIME))):<25}
+                ============================================================
+                """)
+            u = URL_CRAWL + industry[0] + "/"+ region.lower().replace(" ","-")
             try:
-                old_round = url_round
-                url_round = []
-                print(f"Processing Page {page_count}...")
-                soup = BeautifulSoup(r.text, features="lxml")
-                if soup == None:
-                    break
-                new_leads = gethref(soup)
-                for lead in new_leads:
-                    url_round.append(lead['Url'])
-                    if lead['Url'] not in seen_urls:
-                        dic.append(lead)          
-                        seen_urls.add(lead['Url'])
-                nextpage = soup.find("li", class_= "next")
-                if nextpage == None:
-                    print("No 'Next' button found. Crawl finished.")
-                    break
-                
-                nextpage_link = nextpage.find("a")
-                if nextpage_link == None:
-                    break
-                
-                url = urljoin(URL_CRAWL,nextpage_link["href"])
-
-                time.sleep(2)
+                r = requests.get(u, headers=headers)
+                r.raise_for_status()
+            except Exception as e:
+                print(f"Could not load first page in region {region}: {e}")
+                continue
+            
+            page_count = 1
+            while True:
                 try:
-                    r = requests.get(url,headers=headers)
-                    if old_round == url_round:
+                    old_round = url_round
+                    url_round = []
+                    print(f"Processing Page {page_count}...")
+                    soup = BeautifulSoup(r.text, features="lxml")
+                    if soup is None:
                         break
-                except Exception as e:
-                    print(f"Request after {e}...")
-                    time.sleep(5)
+
+                    #Lamento não encontrámos
+                    if(soup.find("h2",class_="not-found-title")):
+                        print("\n*****NO RESULTS ON SEARCH*****\n")
+                        break
+
+                    new_leads = gethref(soup,industry)
+                    for lead in new_leads:
+                        url_round.append(lead['Url'])
+                        if lead['Url'] not in seen_urls:
+                            dic.append(lead)          
+                            seen_urls.add(lead['Url'])
+                    nextpage = soup.find("li", class_= "next")
+                    if nextpage is None:
+                        print("No 'Next' button found. Crawl finished.")
+                        break
+                    
+                    nextpage_link = nextpage.find("a")
+                    if nextpage_link is None:
+                        break
+                    
+                    url = urljoin(URL_CRAWL,nextpage_link["href"])
+
+                    time.sleep(2)
                     try:
                         r = requests.get(url,headers=headers)
-                    except: 
-                        break
-                page_count += 1
-            except Exception as e:
-                print(f"CRITICAL ERROR: {e}")
-                break
-        save_to_db(dic)
-        dic=[]
-    #save_to_excel(dic)
+                        if old_round == url_round:
+                            break
+                    except Exception as e:
+                        print(f"Request after {e}...")
+                        time.sleep(5)
+                        try:
+                            r = requests.get(url,headers=headers)
+                        except: 
+                            break
+                    page_count += 1
+                except Exception as e:
+                    print(f"CRITICAL ERROR: {e}")
+                    break
+            #save_to_db(dic)
+            save_to_excel(dic)
+            dic=[]
     
 
-def gethref(soup):
+def gethref(soup,industry):
     dic = []
     store = soup.find_all("a", class_="card-link")
     if store:
@@ -112,14 +131,14 @@ def gethref(soup):
                 a = i["href"]
                 # Add delay between store detail requests
                 time.sleep(2)
-                url = store_url(a)  
-                if url != None:         
+                url = store_url(a,industry)  
+                if url is not None:         
                     dic.append(url)
                 
     return dic
 
 
-def store_url(href):
+def store_url(href,industry):
     url = urljoin(URL_CRAWL,href)
     try:
         r = requests.get(url,headers=headers)
@@ -168,7 +187,7 @@ def store_url(href):
                 a = i.find("a")
                 if( a and str(a["href"]).startswith("http")):
                     url_store = a["href"]
-                    return getstatus(str(url_store),phone,name, email)
+                    return getstatus(str(url_store),phone,name, email,industry)
             except:
                 continue
         if phone:
@@ -179,13 +198,15 @@ def store_url(href):
                 "Phone": str(phone), 
                 "Security": "NULL", 
                 "Status": "NO WEBSITE", 
-                "Latency": "NULL"
+                "Latency": "NULL",
+                "Industry":industry[0],
+                "Category":industry[1].replace("-"," ")
             }
     except Exception as e:
         print(f"Error getting store website! {e}")
     
 
-def getstatus(url:str, phone, name, email):
+def getstatus(url:str, phone, name, email,industry):
     
     try:
         r = requests.get(url, headers=headers, timeout=5, verify=False)
@@ -195,25 +216,27 @@ def getstatus(url:str, phone, name, email):
             "Url":r.url,
             "Phone":phone,
             "Status":r.status_code,
-            "Latency":round(r.elapsed.total_seconds(), 2)
+            "Latency":round(r.elapsed.total_seconds(), 2),
+            "Industry":industry,
+            "Category":industry[1].replace("-"," ")
         }
-        return test_request(dic, url, phone, name,email)
+        return test_request(dic, url, phone, name,email,industry)
     except requests.exceptions.Timeout:
-        return {"Name": name,"Email":email,"Url": url, "Phone": phone, "Security": "False", "Status": "TIMEOUT", "Latency": ">5s"}
+        return {"Name": name,"Email":email,"Url": url, "Phone": phone, "Security": "False", "Status": "TIMEOUT", "Latency": ">5s","Industry":str(industry[0].replace("-"," ")),"Category":str(industry[1]).replace("-"," ")}
         
     except requests.exceptions.SSLError:
-        return {"Name": name,"Email":email,"Url": url, "Phone": phone, "Security": "False", "Status": "SSL_ERROR", "Latency": "999"}
+        return {"Name": name,"Email":email,"Url": url, "Phone": phone, "Security": "False", "Status": "SSL_ERROR", "Latency": "999","Industry":str(industry[0].replace("-"," ")),"Category":str(industry[1]).replace("-"," ")}
         
     except requests.exceptions.ConnectionError:
-        return {"Name": name,"Email":email,"Url": url, "Phone": phone, "Security": "False", "Status": "CONNECTION_REFUSED", "Latency": "999"}
+        return {"Name": name,"Email":email,"Url": url, "Phone": phone, "Security": "False", "Status": "CONNECTION_REFUSED", "Latency": "999","Industry":str(industry[0].replace("-"," ")),"Category":str(industry[1]).replace("-"," ")}
         
     except Exception as e:
         if "facebook" in url or "instagram" in url:
-            return{"Name": name,"Email":email,"Url": url, "Phone": phone, "Security": "Social Page", "Status": "Social Page", "Latency": "Social Page"}
-        return {"Name": name,"Email":email,"Url": url, "Phone": phone, "Security": "False", "Status": f"ERROR_{str(e)[:20]}", "Latency": "999"}
+            return{"Name": name,"Email":email,"Url": url, "Phone": phone, "Security": "Social Page", "Status": "Social Page", "Latency": "Social Page","Industry":str(industry[0].replace("-"," ")),"Category":str(industry[1]).replace("-"," ")}
+        return {"Name": name,"Email":email,"Url": url, "Phone": phone, "Security": "False", "Status": f"ERROR_{str(e)[:20]}", "Latency": "999","Industry":str(industry[0].replace("-"," ")),"Category":str(industry[1]).replace("-"," ")}
 
-def test_request(request:dict, url:str, phone, name,email):
-    dic = {"Name":"","Email":"","Url":"","Security":"","Status":"", "Latency":""}
+def test_request(request:dict, url:str, phone, name,email,industry):
+    dic = {"Name":"","Email":"","Url":"","Security":"","Status":"", "Latency":"","Industry":"","Category":""}
     sec = False 
     speed = False
     con = False
@@ -230,7 +253,7 @@ def test_request(request:dict, url:str, phone, name,email):
         
     if (sec == True and con == True and speed < 3) and not ("facebook" in url or "instagram" in url):
         return None
-    dic.update({"Name": name,"Email":email,"Url":url,"Phone":str(phone),"Security":str(sec),"Status":str(status_code),"Latency":str(speed)})
+    dic.update({"Name": name,"Email":email,"Url":url,"Phone":str(phone),"Security":str(sec),"Status":str(status_code),"Latency":str(speed),"Industry":str(industry[0].replace("-"," ")),"Category":str(industry[1]).replace("-"," ")})
     return dic
 
 def save_to_excel(dic):
@@ -247,13 +270,13 @@ def save_to_excel(dic):
         else:
             audit_list.append(row)
             
-    with open("Stores_Websites.csv", mode='w', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, ["Name","Email","Url","Phone","Security","Status","Latency"])
+    with open("Stores_Websites.csv", mode='a', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, ["Name","Email","Url","Phone","Security","Status","Latency","Industry","Category"])
         writer.writeheader()
         writer.writerows(audit_list)
         
-    with open("Stores_Social.csv", mode='w', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, ["Name","Email","Url","Phone","Security","Status","Latency"])
+    with open("Stores_Social.csv", mode='a', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, ["Name","Email","Url","Phone","Security","Status","Latency","Industry","Category"])
         writer.writeheader()
         writer.writerows(social_list)
         
@@ -274,14 +297,16 @@ def save_to_db(dic):
                     if any(bad_word in url for bad_word in blacklist):
                         continue
 
-                    data_insert = '''INSERT INTO business	(name,email,url,phone,security,status,latency)
-                        VALUES (%s,%s,%s,%s,%s,%s,%s)
+                    data_insert = '''INSERT INTO business	(name,email,url,phone,security,status,latency,industry,category)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
                         ON CONFLICT(name, email)
                         DO UPDATE SET
                             status = EXCLUDED.status,
-                            latency = EXCLUDED.latency;
+                            latency = EXCLUDED.latency,
+                            industry = EXCLUDED.industry,
+                            category = EXCLUDED.category;
                     '''
-                    info = (row['Name'], row['Email'], row['Url'], row['Phone'], row['Security'], row['Status'], row['Latency'])
+                    info = (row['Name'], row['Email'], row['Url'], row['Phone'], row['Security'], row['Status'], row['Latency'], row['Industry'],row['Category'])
                     cursor.execute(data_insert, info)			
             conn.commit()
     except Exception as e:
@@ -289,8 +314,12 @@ def save_to_db(dic):
 
 def main():
     reg_list = load_regions()
+    ind_list = load_industries()
+    if not reg_list or not ind_list:
+        print("Error: Regions or Industries list is empty.")
+        return
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-    urlcrawer_engine(reg_list)
+    urlcrawer_engine(reg_list,ind_list)
 
 if __name__ == "__main__":
         main()
