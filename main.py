@@ -60,7 +60,7 @@ def load_industries():
 
 
 
-def urlcrawer_engine(REGIONS:list,INDUSTRIES:list):
+def urlcrawler_engine(REGIONS:list,INDUSTRIES:list):
     """Main crawler loop over industries and regions.
 
     Builds search URLs, paginates through results, extracts leads, and stores them in the database.
