@@ -10,8 +10,8 @@ from dotenv import load_dotenv
 import unicodedata
 from datetime import timedelta
 
-URL_BASE = "https://www.pai.pt/searches"
-URL_CRAWL = "https://www.pai.pt/"
+URL_BASE = "https://www.diretorio-exemplo.com/searches"
+URL_CRAWL = "https://www.diretorio-exemplo.com/"
 REG_FILE = "regions.txt"
 IND_FILE = "industries.txt"
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.3','Accept-Language':'en-US'}
@@ -25,6 +25,11 @@ password = os.getenv("DB_PASSWORD")
 db_name = os.getenv("DB_NAME")
 
 def load_regions():
+    """Reads regions from file into a list.
+
+    Returns:
+        list[str] | None: List of regions in normalized format, or None if file reading fails.
+    """
     region_list = []
     try:
         with open(REG_FILE,"r") as file:
@@ -37,6 +42,11 @@ def load_regions():
         print(f"Error with region file: {e}")
 
 def load_industries():
+    """Load industries and categories from file.
+
+    Returns:
+        list[list[str]] | None: Each entry contains [industry, category] in normalized format, or None if file reading fails.
+    """
     industries_list = []
     try:
         with open(IND_FILE,"r") as file:
@@ -48,7 +58,18 @@ def load_industries():
     except Exception as e:
         print(f"Error with industries file: {e}")
 
-def urlcrawer_engine(REGIONS,INDUSTRIES):
+
+
+def urlcrawer_engine(REGIONS:list,INDUSTRIES:list):
+    """Main crawler loop over industries and regions.
+
+    Builds search URLs, paginates through results, extracts leads, and stores them in the database.
+    Data is saved after each region to prevent loss on interruption.
+
+    Args:
+        REGIONS (list[str]): List of region slugs.
+        INDUSTRIES (list[list[str]]): Industry-category pairs.
+    """
     t = time.localtime()
     dic = []
     seen_urls = set()
@@ -122,9 +143,17 @@ def urlcrawer_engine(REGIONS,INDUSTRIES):
             save_to_db(dic)
             #save_to_excel(dic)
             dic=[]
-    
 
-def gethref(soup,industry):
+def gethref(soup:BeautifulSoup,industry:list):
+    """Extract business detail page links and process them.
+
+    Args:
+        soup (BeautifulSoup): Parsed HTML of listing page.
+        industry (list[str]): Industry-category pair.
+
+    Returns:
+        list[dict]: Extracted business data dictionaries.
+    """
     dic = []
     store = soup.find_all("a", class_="card-link")
     if store:
@@ -132,14 +161,25 @@ def gethref(soup,industry):
                 a = i["href"]
                 # Add delay between store detail requests
                 time.sleep(2)
-                url = store_url(a,industry)  
+                url = store_url(str(a),industry)  
                 if url is not None:         
                     dic.append(url)
                 
     return dic
 
 
-def store_url(href,industry):
+def store_url(href:str,industry:list):
+    """Scrape a business detail page for contact and website information.
+
+    Args:
+        href (str): Relative URL to the business page.
+        industry (list[str]): Industry-category pair.
+
+    Returns:
+        dict | None:
+            - dict: Extracted business data if successful
+            - None: If request fails or data is invalid
+    """
     url = urljoin(URL_CRAWL,href)
     try:
         r = requests.get(url,headers=headers)
@@ -188,7 +228,7 @@ def store_url(href,industry):
                 a = i.find("a")
                 if( a and str(a["href"]).startswith("http")):
                     url_store = a["href"]
-                    return getstatus(str(url_store),phone,name, email,industry)
+                    return getstatus(str(url_store),str(phone),name, email,industry)
             except:
                 continue
         if phone:
@@ -207,8 +247,22 @@ def store_url(href,industry):
         print(f"Error getting store website! {e}")
     
 
-def getstatus(url:str, phone, name, email,industry):
-    
+def getstatus(url:str, phone:str, name:str, email:str,industry:list):
+    """Check website availability and basic metrics.
+
+    Performs an HTTP request and builds a base data dictionary, then passes it
+    to `test_request` for further validation.
+
+    Args:
+        url (str): Website URL.
+        phone (str): Company phone number.
+        name (str): Company name.
+        email (str): Company email.
+        industry (list[str]): Industry-category pair.
+
+    Returns:
+        dict | None: Website status and metadata or None if website is healthy.
+    """
     try:
         r = requests.get(url, headers=headers, timeout=5, verify=False)
         dic = {
@@ -236,7 +290,24 @@ def getstatus(url:str, phone, name, email,industry):
             return{"Name": name,"Email":email,"Url": url, "Phone": phone, "Security": "Social Page", "Status": "Social Page", "Latency": "Social Page","Industry":str(industry[0].replace("-"," ")),"Category":str(industry[1]).replace("-"," ")}
         return {"Name": name,"Email":email,"Url": url, "Phone": phone, "Security": "False", "Status": f"ERROR_{str(e)[:20]}", "Latency": "999","Industry":str(industry[0].replace("-"," ")),"Category":str(industry[1]).replace("-"," ")}
 
-def test_request(request:dict, url:str, phone, name,email,industry):
+def test_request(request:dict, url:str, phone:str, name:str,email:str,industry:list):
+    """Evaluate website health based on security, status, and latency. 
+    
+    Healthy sites return None and are intentionally excluded from the output, only leads with issues are stored.
+
+    Args:
+        request (dict): Base request data.
+        url (str): Website URL.
+        phone (str): Company phone number.
+        name (str): Company name.
+        email (str): Company email.
+        industry (list[str]): Industry-category pair.
+
+    Returns:
+        dict | None:
+            - None: If the website is considered healthy
+            - dict: If issues are detected
+    """
     dic = {"Name":"","Email":"","Url":"","Security":"","Status":"", "Latency":"","Industry":"","Category":""}
     sec = False 
     speed = False
@@ -257,7 +328,14 @@ def test_request(request:dict, url:str, phone, name,email,industry):
     dic.update({"Name": name,"Email":email,"Url":url,"Phone":str(phone),"Security":str(sec),"Status":str(status_code),"Latency":str(speed),"Industry":str(industry[0].replace("-"," ")),"Category":str(industry[1]).replace("-"," ")})
     return dic
 
-def save_to_excel(dic):
+def save_to_excel(dic:list):
+    """Save scraped data to CSV files for debugging and inspection.
+
+    Separates business websites from social media links.
+
+    Args:
+        dic (list[dict]): List of business data entries.
+    """
     audit_list = []
     social_list = []
     blacklist = ['tripadvisor', 'thefork', 'zomato', 'yelp', 'pai.pt', 'eatbu', 'wix', 'google']
@@ -284,8 +362,14 @@ def save_to_excel(dic):
     print(f"Saved {len(audit_list)} Website Leads.")
     print(f"Saved {len(social_list)} Social Media Leads.")
 
-def save_to_db(dic):
+def save_to_db(dic:list):
+    """Persist scraped data into PostgreSQL database.
 
+    Inserts new records and updates existing ones on conflict.
+
+    Args:
+        dic (list[dict]): List of business data entries.
+    """ 
     blacklist = ['tripadvisor', 'thefork', 'zomato', 'yelp', 'pai.pt', 'eatbu', 'wix', 'google']
 
 
@@ -314,6 +398,7 @@ def save_to_db(dic):
         print(f"Error connecting to the db or inserting data: {e}")
 
 def main():
+    """Entry point. Loads config and starts the crawler."""
     reg_list = load_regions()
     ind_list = load_industries()
     if not reg_list or not ind_list:
