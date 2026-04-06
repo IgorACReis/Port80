@@ -6,6 +6,13 @@
 
 An end-to-end Python **ETL (Extract, Transform, Load)** pipeline designed to extract business data from online directories, autonomously audit the technical health of their websites, and securely load the processed data into a relational database.
 
+## 📋 Table of Contents
+- [What it does](#-what-it-does-the-etl-process)
+- [Connection & Health Tests](#-connection--health-tests)
+- [Architecture & Storage](#-architecture--storage)
+- [Technologies Stack](#-technologies-stack)
+- [Quick Start](#-quick-start)
+  
 ## 🚀 What it does (The ETL Process)
 
 * **Extract:** Navigates through 300+ regional pages of business directories, scraping Business Names, Phone Numbers, and Emails (dynamically extracted via hidden `mailto:` tags).
