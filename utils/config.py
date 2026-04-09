@@ -3,8 +3,8 @@
 # ==========================================
 # CRAWLER CONFIGURATIONS
 # ==========================================
-URL_BASE = "https://www.pai.pt/searches"
-URL_CRAWL = "https://www.pai.pt/"
+URL_BASE = "https://www.diretorio-exemplo.com/searches"
+URL_CRAWL = "https://www.diretorio-exemplo.com/"
 
 # ==========================================
 # FILE PATHS
