@@ -1,28 +1,14 @@
-import psycopg2
-import requests
-import csv
-from bs4 import BeautifulSoup
 import time
-from urllib.parse import quote, urljoin
-import urllib3
-import os
-from dotenv import load_dotenv
 import unicodedata
 from datetime import timedelta
 
-URL_BASE = "https://www.diretorio-exemplo.com/searches"
-URL_CRAWL = "https://www.diretorio-exemplo.com/"
-REG_FILE = "regions.txt"
-IND_FILE = "industries.txt"
-headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.3','Accept-Language':'en-US'}
+from utils.config import REG_FILE,IND_FILE,URL_CRAWL, headers
+from database.db_manager import save_to_db
+from pipeline.extractor import urlcrawer_engine
+from database.excel_save import save_to_excel
+
 START_TIME = time.time()
 
-load_dotenv()
-host = os.getenv("DB_HOST")
-port = os.getenv("DB_PORT")
-user = os.getenv("DB_USER")
-password = os.getenv("DB_PASSWORD")
-db_name = os.getenv("DB_NAME")
 
 def load_regions():
     """Reads regions from file into a list.
@@ -58,24 +44,18 @@ def load_industries():
     except Exception as e:
         print(f"Error with industries file: {e}")
 
-
-
-def urlcrawer_engine(REGIONS:list,INDUSTRIES:list):
-    """Main crawler loop over industries and regions.
-
-    Builds search URLs, paginates through results, extracts leads, and stores them in the database.
-    Data is saved after each region to prevent loss on interruption.
-
-    Args:
-        REGIONS (list[str]): List of region slugs.
-        INDUSTRIES (list[list[str]]): Industry-category pairs.
-    """
+def start():
+    print("STARTING PORT80...")
+    reg_list = load_regions()
+    ind_list = load_industries()
     t = time.localtime()
-    dic = []
-    seen_urls = set()
-    url_round = []
-    for industry in INDUSTRIES:
-        for region in REGIONS:
+
+    if not reg_list or not ind_list:
+        print("Error: Regions or Industries list is empty.")
+        return
+    
+    for industry in ind_list:
+        for region in reg_list:
             print(f"""
                 {'='*60}
                 ------------------------------------------------------------
@@ -84,328 +64,18 @@ def urlcrawer_engine(REGIONS:list,INDUSTRIES:list):
                 START TIME: {str(time.strftime("%d/%m/%Y %H:%M:%S",t))} UPTIME: {str(timedelta(seconds=int(time.time() - START_TIME))):<25}
                 ============================================================
                 """)
-            u = URL_CRAWL + industry[0] + "/"+ region.lower().replace(" ","-")
-            try:
-                r = requests.get(u, headers=headers)
-                r.raise_for_status()
-            except Exception as e:
-                print(f"Could not load first page in region {region}: {e}")
-                continue
-            
-            page_count = 1
-            while True:
-                try:
-                    old_round = url_round
-                    url_round = []
-                    print(f"Processing Page {page_count}...")
-                    soup = BeautifulSoup(r.text, features="lxml")
-                    if soup is None:
-                        break
+            dic = urlcrawer_engine(region, industry)
+            worth = [lead for lead in dic if lead is not None]
+            if worth:
+                save_to_excel(worth)
+                print(f"Sucess: {len(worth)} leads saved.")
+            else:
+                print("No lead found in this region.")
 
-                    #Lamento não encontrámos
-                    if(soup.find("h2",class_="not-found-title")):
-                        print("\n*****NO RESULTS ON SEARCH*****\n")
-                        break
-
-                    new_leads = gethref(soup,industry)
-                    for lead in new_leads:
-                        url_round.append(lead['Url'])
-                        if lead['Url'] not in seen_urls:
-                            dic.append(lead)          
-                            seen_urls.add(lead['Url'])
-                    nextpage = soup.find("li", class_= "next")
-                    if nextpage is None:
-                        print("No 'Next' button found. Crawl finished.")
-                        break
-                    
-                    nextpage_link = nextpage.find("a")
-                    if nextpage_link is None:
-                        break
-                    
-                    url = urljoin(URL_CRAWL,nextpage_link["href"])
-
-                    time.sleep(2)
-                    try:
-                        r = requests.get(url,headers=headers)
-                        if old_round == url_round:
-                            break
-                    except Exception as e:
-                        print(f"Request after {e}...")
-                        time.sleep(5)
-                        try:
-                            r = requests.get(url,headers=headers)
-                        except: 
-                            break
-                    page_count += 1
-                except Exception as e:
-                    print(f"CRITICAL ERROR: {e}")
-                    break
-            save_to_db(dic)
-            #save_to_excel(dic)
-            dic=[]
-
-def gethref(soup:BeautifulSoup,industry:list):
-    """Extract business detail page links and process them.
-
-    Args:
-        soup (BeautifulSoup): Parsed HTML of listing page.
-        industry (list[str]): Industry-category pair.
-
-    Returns:
-        list[dict]: Extracted business data dictionaries.
-    """
-    dic = []
-    store = soup.find_all("a", class_="card-link")
-    if store:
-            for i in store:
-                a = i["href"]
-                # Add delay between store detail requests
-                time.sleep(2)
-                url = store_url(str(a),industry)  
-                if url is not None:         
-                    dic.append(url)
-                
-    return dic
-
-
-def store_url(href:str,industry:list):
-    """Scrape a business detail page for contact and website information.
-
-    Args:
-        href (str): Relative URL to the business page.
-        industry (list[str]): Industry-category pair.
-
-    Returns:
-        dict | None:
-            - dict: Extracted business data if successful
-            - None: If request fails or data is invalid
-    """
-    url = urljoin(URL_CRAWL,href)
-    try:
-        r = requests.get(url,headers=headers)
-        r.raise_for_status()
-    except Exception as e:
-                print(f"Request after {e}...")
-                time.sleep(5)
-                try:
-                    r = requests.get(url,headers=headers)
-                except:
-                    return None
-
-    soup = BeautifulSoup(r.text, features="lxml")
-    try:
-        btn_phone = soup.find("button", attrs={"data-trackable-event": "call-phone"})
-        name_tag = soup.find("h2", class_ = "desktop-title")
-        name = name_tag.get_text(strip=True) if name_tag else "Unknown"
-        email = "Not Listed"
-    
-        try:
-            lists = soup.find_all("li", class_="listing-item")
-            
-            for l in lists:
-                a_tag = l.find("a")
-                if a_tag and a_tag.has_attr("href"):
-                    href_str = str(a_tag["href"])
-                    if href_str.startswith("mailto:"):
-                        email_raw = href_str.split(":")[1]
-                        email = email_raw.split("?")[0].strip()
-                        break
-            
-                        
-        except Exception as e:
-            print(f"Erro a processar e-mail: {e}")
-
-        if btn_phone:
-            phone = btn_phone.get("value")
-        else:
-            phone = "Not Listed"
-    except:
-        phone = None
-    try:
-        website = soup.find_all("li", class_ = "listing-item")
-        for i in website:
-            try:
-                a = i.find("a")
-                if( a and str(a["href"]).startswith("http")):
-                    url_store = a["href"]
-                    return getstatus(str(url_store),str(phone),name, email,industry)
-            except:
-                continue
-        if phone:
-            return {
-                "Name": name,
-                "Email":email,
-                "Url": "NO WEBSITE", 
-                "Phone": str(phone), 
-                "Security": "NULL", 
-                "Status": "NO WEBSITE", 
-                "Latency": "NULL",
-                "Industry":industry[0],
-                "Category":industry[1].replace("-"," ")
-            }
-    except Exception as e:
-        print(f"Error getting store website! {e}")
-    
-
-def getstatus(url:str, phone:str, name:str, email:str,industry:list):
-    """Check website availability and basic metrics.
-
-    Performs an HTTP request and builds a base data dictionary, then passes it
-    to `test_request` for further validation.
-
-    Args:
-        url (str): Website URL.
-        phone (str): Company phone number.
-        name (str): Company name.
-        email (str): Company email.
-        industry (list[str]): Industry-category pair.
-
-    Returns:
-        dict | None: Website status and metadata or None if website is healthy.
-    """
-    try:
-        r = requests.get(url, headers=headers, timeout=5, verify=False)
-        dic = {
-            "Name":name,
-            "Email":email,
-            "Url":r.url,
-            "Phone":phone,
-            "Status":r.status_code,
-            "Latency":round(r.elapsed.total_seconds(), 2),
-            "Industry":industry,
-            "Category":industry[1].replace("-"," ")
-        }
-        return test_request(dic, url, phone, name,email,industry)
-    except requests.exceptions.Timeout:
-        return {"Name": name,"Email":email,"Url": url, "Phone": phone, "Security": "False", "Status": "TIMEOUT", "Latency": ">5s","Industry":str(industry[0].replace("-"," ")),"Category":str(industry[1]).replace("-"," ")}
-        
-    except requests.exceptions.SSLError:
-        return {"Name": name,"Email":email,"Url": url, "Phone": phone, "Security": "False", "Status": "SSL_ERROR", "Latency": "999","Industry":str(industry[0].replace("-"," ")),"Category":str(industry[1]).replace("-"," ")}
-        
-    except requests.exceptions.ConnectionError:
-        return {"Name": name,"Email":email,"Url": url, "Phone": phone, "Security": "False", "Status": "CONNECTION_REFUSED", "Latency": "999","Industry":str(industry[0].replace("-"," ")),"Category":str(industry[1]).replace("-"," ")}
-        
-    except Exception as e:
-        if "facebook" in url or "instagram" in url:
-            return{"Name": name,"Email":email,"Url": url, "Phone": phone, "Security": "Social Page", "Status": "Social Page", "Latency": "Social Page","Industry":str(industry[0].replace("-"," ")),"Category":str(industry[1]).replace("-"," ")}
-        return {"Name": name,"Email":email,"Url": url, "Phone": phone, "Security": "False", "Status": f"ERROR_{str(e)[:20]}", "Latency": "999","Industry":str(industry[0].replace("-"," ")),"Category":str(industry[1]).replace("-"," ")}
-
-def test_request(request:dict, url:str, phone:str, name:str,email:str,industry:list):
-    """Evaluate website health based on security, status, and latency. 
-    
-    Healthy sites return None and are intentionally excluded from the output, only leads with issues are stored.
-
-    Args:
-        request (dict): Base request data.
-        url (str): Website URL.
-        phone (str): Company phone number.
-        name (str): Company name.
-        email (str): Company email.
-        industry (list[str]): Industry-category pair.
-
-    Returns:
-        dict | None:
-            - None: If the website is considered healthy
-            - dict: If issues are detected
-    """
-    dic = {"Name":"","Email":"","Url":"","Security":"","Status":"", "Latency":"","Industry":"","Category":""}
-    sec = False 
-    speed = False
-    con = False
-    if not request:
-        print("request is empty")
-        return
-    status_code = request["Status"]
-    if request["Url"].startswith("https"):
-        sec = True
-    if request["Status"] == 200:
-        con = True
-        
-    speed = request["Latency"]
-        
-    if (sec == True and con == True and speed < 3) and not ("facebook" in url or "instagram" in url):
-        return None
-    dic.update({"Name": name,"Email":email,"Url":url,"Phone":str(phone),"Security":str(sec),"Status":str(status_code),"Latency":str(speed),"Industry":str(industry[0].replace("-"," ")),"Category":str(industry[1]).replace("-"," ")})
-    return dic
-
-def save_to_excel(dic:list):
-    """Save scraped data to CSV files for debugging and inspection.
-
-    Separates business websites from social media links.
-
-    Args:
-        dic (list[dict]): List of business data entries.
-    """
-    audit_list = []
-    social_list = []
-    blacklist = ['tripadvisor', 'thefork', 'zomato', 'yelp', 'pai.pt', 'eatbu', 'wix', 'google']
-
-    for row in dic:
-        url = row['Url'].lower()
-        if any(bad_word in url for bad_word in blacklist):
-            continue
-        if 'facebook' in url or 'instagram' in url:
-            social_list.append(row)
-        else:
-            audit_list.append(row)
-            
-    with open("Stores_Websites.csv", mode='a', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, ["Name","Email","Url","Phone","Security","Status","Latency","Industry","Category"])
-        writer.writeheader()
-        writer.writerows(audit_list)
-        
-    with open("Stores_Social.csv", mode='a', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, ["Name","Email","Url","Phone","Security","Status","Latency","Industry","Category"])
-        writer.writeheader()
-        writer.writerows(social_list)
-        
-    print(f"Saved {len(audit_list)} Website Leads.")
-    print(f"Saved {len(social_list)} Social Media Leads.")
-
-def save_to_db(dic:list):
-    """Persist scraped data into PostgreSQL database.
-
-    Inserts new records and updates existing ones on conflict.
-
-    Args:
-        dic (list[dict]): List of business data entries.
-    """ 
-    blacklist = ['tripadvisor', 'thefork', 'zomato', 'yelp', 'pai.pt', 'eatbu', 'wix', 'google']
-
-
-    try:
-        with psycopg2.connect(host=host,port=port,user=user,password=password,database=db_name) as conn:
-            print(f"Connected to db with host name: {host}")
-            with conn.cursor() as cursor:
-                for row in dic:
-                    url = row['Url'].lower()
-                    if any(bad_word in url for bad_word in blacklist):
-                        continue
-
-                    data_insert = '''INSERT INTO business	(name,email,url,phone,security,status,latency,industry,category)
-                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                        ON CONFLICT(name, email)
-                        DO UPDATE SET
-                            status = EXCLUDED.status,
-                            latency = EXCLUDED.latency,
-                            industry = EXCLUDED.industry,
-                            category = EXCLUDED.category;
-                    '''
-                    info = (row['Name'], row['Email'], row['Url'], row['Phone'], row['Security'], row['Status'], row['Latency'], row['Industry'],row['Category'])
-                    cursor.execute(data_insert, info)			
-            conn.commit()
-    except Exception as e:
-        print(f"Error connecting to the db or inserting data: {e}")
-
+    print(f"Shutting Port80 total time: {str(timedelta(seconds=int(time.time() - START_TIME))):<25}")
 def main():
     """Entry point. Loads config and starts the crawler."""
-    reg_list = load_regions()
-    ind_list = load_industries()
-    if not reg_list or not ind_list:
-        print("Error: Regions or Industries list is empty.")
-        return
-    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-    urlcrawer_engine(reg_list,ind_list)
+    start()
 
 if __name__ == "__main__":
         main()
