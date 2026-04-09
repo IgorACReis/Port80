@@ -1,7 +1,18 @@
 # Port80: Automated ETL & Web Health Audit Pipeline
+![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-316192?logo=postgresql)
+![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?logo=docker)
+![License](https://img.shields.io/badge/License-MIT-green)
 
 An end-to-end Python **ETL (Extract, Transform, Load)** pipeline designed to extract business data from online directories, autonomously audit the technical health of their websites, and securely load the processed data into a relational database.
 
+## 📋 Table of Contents
+- [What it does](#-what-it-does-the-etl-process)
+- [Connection & Health Tests](#-connection--health-tests)
+- [Architecture & Storage](#-architecture--storage)
+- [Technologies Stack](#-technologies-stack)
+- [Quick Start](#-quick-start)
+  
 ## 🚀 What it does (The ETL Process)
 
 * **Extract:** Navigates through 300+ regional pages of business directories, scraping Business Names, Phone Numbers, and Emails (dynamically extracted via hidden `mailto:` tags).
@@ -32,3 +43,43 @@ Transitioning from static CSV exports, this project leverages a modern data arch
     * `requests` (HTTP calls and robust network exception handling)
     * `beautifulsoup4` / `lxml` (HTML Parsing & DOM navigation)
     * `unicodedata` / `datetime` (Data normalization and execution logging)
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Docker & Docker Compose
+- Python 3.10+
+
+### 1. Clone the repository
+```bash
+git clone https://github.com/IgorACReis/Port80.git
+cd port80
+```
+
+### 2. Configure environment variables
+Create a `.env` file in the root directory:
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=your_user
+DB_PASSWORD=your_password
+DB_NAME=your_db
+```
+
+### 3. Start the database
+```bash
+docker-compose up -d
+```
+
+### 4. Install dependencies
+```bash
+pip install -r requirements.txt
+```
+
+### 5. Run the crawler
+```bash
+python main.py
+```
+
+> ⚠️ Crawl duration depends on the number of regions and industries configured in `regions.txt` and `industries.txt`.
+
